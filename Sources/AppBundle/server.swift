@@ -93,15 +93,20 @@ private func newConnection(_ socket: Socket) async { // todo add exit codes
         }
         if let command {
             let _answer: Result<ServerAnswer, Error> = await Task { @MainActor in
-                refreshSession(.socketServer, screenIsDefinitelyUnlocked: true) {
-                    let cmdResult = command.run(.defaultEnv, CmdStdin(request.stdin)) // todo pass AEROSPACE_ env vars from CLI instead of defaultEnv
-                    return ServerAnswer(
-                        exitCode: cmdResult.exitCode,
-                        stdout: cmdResult.stdout.joined(separator: "\n"),
-                        stderr: cmdResult.stderr.joined(separator: "\n"),
-                        serverVersionAndHash: serverVersionAndHash
-                    )
+                // todo pass AEROSPACE_ env vars from CLI instead of defaultEnv
+                let cmdResult = if command.isReadOnly {
+                    command.run(.defaultEnv, CmdStdin(request.stdin))
+                } else {
+                    refreshSession(.socketServer, screenIsDefinitelyUnlocked: true) {
+                        command.run(.defaultEnv, CmdStdin(request.stdin))
+                    }
                 }
+                return ServerAnswer(
+                    exitCode: cmdResult.exitCode,
+                    stdout: cmdResult.stdout.joined(separator: "\n"),
+                    stderr: cmdResult.stderr.joined(separator: "\n"),
+                    serverVersionAndHash: serverVersionAndHash
+                )
             }.result
             let answer = _answer.getOrNil() ??
                 ServerAnswer(

@@ -27,10 +27,15 @@ extension HotKey {
     for binding in targetBindings.values where !hotkeys.keys.contains(binding.descriptionWithKeyCode) {
         hotkeys[binding.descriptionWithKeyCode] = HotKey(key: binding.keyCode, modifiers: binding.modifiers, keyDownHandler: {
             check(Thread.current.isMainThread)
-            if let activeMode {
+            guard let activeMode, let commands = config.modes[activeMode]?.bindings[binding.descriptionWithKeyCode]?.commands else {
+                return
+            }
+
+            _ = if commands.allSatisfy({ $0.isReadOnly }) {
+                commands.runCmdSeq(.defaultEnv, .emptyStdin)
+            } else {
                 refreshSession(.hotkeyBinding, screenIsDefinitelyUnlocked: true) {
-                    _ = config.modes[activeMode]?.bindings[binding.descriptionWithKeyCode]?.commands
-                        .runCmdSeq(.defaultEnv, .emptyStdin)
+                    commands.runCmdSeq(.defaultEnv, .emptyStdin)
                 }
             }
         })

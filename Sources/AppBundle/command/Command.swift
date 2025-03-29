@@ -31,6 +31,8 @@ extension Command {
     }
 
     var isExec: Bool { self is ExecAndForgetCommand }
+    // todo Rename allowInConfig to isQuery?
+    var isReadOnly: Bool { isExec || !info.allowInConfig }
 }
 
 // There are 4 entry points for running commands:
@@ -45,7 +47,9 @@ extension Command {
         for command in self {
             if TrayMenuModel.shared.isEnabled || isAllowedToRunWhenDisabled(command) {
                 isSucc = command.run(env, io) && isSucc
-                refreshModel()
+                if !command.isReadOnly {
+                    refreshModel()
+                }
             }
         }
         return isSucc
